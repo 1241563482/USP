@@ -1,0 +1,19 @@
+[project]
+name = "usp"
+version = "0.1.0"
+description = "Universal Superionic Materials Prediction framework"
+requires-python = ">=3.9"
+dependencies = [
+    "ase>=3.26.0",
+    "mp-api>=0.43.0",
+    "numpy>=2.0.2",
+    "pymatgen>=2024.8.9",
+    "tqdm>=4.67.3",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project.scripts]
+usp = "usp.main:main"

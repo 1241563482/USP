@@ -1,0 +1,2 @@
+[console_scripts]
+usp = usp.main:main
