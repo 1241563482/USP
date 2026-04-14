@@ -83,8 +83,10 @@ class MaterialsProjectClient(StructureProvider):
             docs = self._mpapi.materials.summary.search(chemsys=chemsys)
             return [(doc.material_id, doc.structure) for doc in docs]
 
-        docs = self._mpr.query({"elements": {"$in": elements}}, ["material_id", "structure"])
-        return [(doc["material_id"], doc["structure"]) for doc in docs]
+        raise RuntimeError(
+            "Element-based search requires the 'mp-api' package, which is not available. "
+            "Please install it: pip install mp-api"
+        )
 
     def download_structures_by_elements(self, elements: list[str], out_dir: str = ".") -> list[str]:
         """Search and write CIFs for matching materials.
