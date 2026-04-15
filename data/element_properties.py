@@ -223,14 +223,6 @@ ETA_0GPA: dict[str, float] = {
 """Chemical hardnesses (eta) at 0 GPa keyed by element symbol."""
 
 
-def get_element_number(symbol: str) -> int | None:
-    """Return the atomic number for an element symbol, or None if unknown."""
-    try:
-        return chemical_symbols.index(symbol)
-    except ValueError:
-        return None
-
-
 def chi_eta_at_0GPa(symbol: str) -> tuple[float, float]:
     """Return (chi, eta) at 0 GPa for the given element symbol.
 

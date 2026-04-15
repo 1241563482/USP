@@ -10,6 +10,7 @@ from .api import MaterialsProjectClient
 from .optimizer import MACEOptimizer
 from .dft import DummyDFTCalculator
 from .workflow import run_workflow
+from .classifier import SuperionicClassifier
 
 
 logger = logging.getLogger(__name__)
@@ -61,6 +62,7 @@ def main():
     group.add_argument("--mp", nargs="+",
                        help="List of element symbols to download from Materials Project")
     group.add_argument("--relax", help="Path to input file for MACE relaxation")
+    group.add_argument("--predict", help="Path to input XYZ file for superionic classification")
     parser.add_argument("--mp-api-key", nargs='?', const=None, default=argparse.SUPPRESS,
                         help="Materials Project API key. "
                              "Use 'usp --mp-api-key' to check existing key from ~/.bashrc. "
@@ -97,9 +99,14 @@ def main():
         optimizer.relax_file(args.relax, output_path="opt.xyz")
         return
 
+    # Prediction mode: no MP key required
+    if args.predict:
+        SuperionicClassifier.predict_from_xyz(args.predict)
+        return
+
     # Normal workflow: require either --input or --mp
     if not args.input and not args.mp:
-        parser.error("One of --input, --mp, or --relax is required")
+        parser.error("One of --input, --mp, --relax, or --predict is required")
 
     mp_api_key = os.environ.get("MP_API_KEY") or _read_mp_api_key_from_bashrc()
     if not mp_api_key:
