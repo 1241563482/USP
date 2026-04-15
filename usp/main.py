@@ -99,7 +99,7 @@ def main():
     if args.mp:
         ids = provider.download_structures_by_elements(args.mp, out_dir=args.output_dir)
         for mid in ids:
-            print(f"downloaded {mid} -> {args.output_dir}/{mid}.cif")
+            print(f"downloaded {mid}")
         return
 
     # normal workflow using an input file
