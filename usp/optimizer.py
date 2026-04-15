@@ -4,7 +4,11 @@ from abc import ABC, abstractmethod
 from pymatgen.core import Structure
 from pymatgen.io.ase import AseAtomsAdaptor
 import logging
+import warnings
+import os
 
+warnings.filterwarnings("ignore", message=".*TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD.*")
+warnings.filterwarnings("ignore", message=".*cuequivariance.*is not available.*")
 
 logger = logging.getLogger(__name__)
 
@@ -45,10 +49,13 @@ class MACEOptimizer(Optimizer):
                 "ASE is required for MACE relaxation. Please install: pip install ase"
             ) from exc
 
-        atoms = read(input_path)
-        relaxed = self._relax_atoms(atoms)
-        write(output_path, relaxed)
-        logger.info(f"Relaxed structure saved to {output_path}")
+        atoms_to_relax = read(input_path, ":")
+        out = []
+        for atoms in atoms_to_relax:
+            relaxed = self._relax_atoms(atoms)
+            out.append(relaxed)
+        write(output_path, out)
+        logger.info(f"Relaxed structures saved to {output_path}")
 
     def _relax_atoms(self, atoms):
         """Internal helper: run ASE geometry optimization on ASE Atoms."""
@@ -66,11 +73,12 @@ class MACEOptimizer(Optimizer):
                 "ASE is required for MACE relaxation. Please install: pip install ase"
             ) from exc
 
+
         calc = mace_mp(model=self.model_path, device=self.device, dtype=self.dtype)
         atoms.calc = calc
-
         dyn = BFGS(atoms, logfile="-")
-        dyn.run(fmax=0.05)
+        dyn.run(fmax=0.001)
         energy = atoms.get_potential_energy()
         logger.info(f"MACE relaxation converged, final energy: {energy:.4f} eV")
+
         return atoms

@@ -60,7 +60,7 @@ def main():
     group.add_argument("--input", help="Path to input CSV/JSON file")
     group.add_argument("--mp", nargs="+",
                        help="List of element symbols to download from Materials Project")
-    group.add_argument("--relax-xyz", help="Path to input XYZ file for MACE relaxation")
+    group.add_argument("--relax", help="Path to input file for MACE relaxation")
     parser.add_argument("--mp-api-key", nargs='?', const=None, default=argparse.SUPPRESS,
                         help="Materials Project API key. "
                              "Use 'usp --mp-api-key' to check existing key from ~/.bashrc. "
@@ -92,14 +92,14 @@ def main():
             return
 
     # Relaxation mode: no MP key required
-    if args.relax_xyz:
+    if args.relax:
         optimizer = MACEOptimizer(device=args.mace_device, dtype=args.mace_dtype)
-        optimizer.relax_file(args.relax_xyz, output_path="opt.xyz")
+        optimizer.relax_file(args.relax, output_path="opt.xyz")
         return
 
     # Normal workflow: require either --input or --mp
     if not args.input and not args.mp:
-        parser.error("One of --input, --mp, or --relax-xyz is required")
+        parser.error("One of --input, --mp, or --relax is required")
 
     mp_api_key = os.environ.get("MP_API_KEY") or _read_mp_api_key_from_bashrc()
     if not mp_api_key:
