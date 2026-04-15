@@ -60,12 +60,19 @@ def main():
     group.add_argument("--input", help="Path to input CSV/JSON file")
     group.add_argument("--mp", nargs="+",
                        help="List of element symbols to download from Materials Project")
+    group.add_argument("--relax-xyz", help="Path to input XYZ file for MACE relaxation")
     parser.add_argument("--mp-api-key", nargs='?', const=None, default=argparse.SUPPRESS,
                         help="Materials Project API key. "
                              "Use 'usp --mp-api-key' to check existing key from ~/.bashrc. "
                              "Use 'usp --mp-api-key <KEY>' to set it.")
     parser.add_argument("--output-dir", default=".",
-                        help="Directory to write CIF files when using --mp")
+                        help="Directory to write output files when using --mp")
+    parser.add_argument("--format", default="vasp", choices=["vasp", "xyz"],
+                        help="Output format for downloaded structures (default: vasp)")
+    parser.add_argument("--mace-device", default="cpu",
+                        help="Device for MACE calculator (cpu or cuda)")
+    parser.add_argument("--mace-dtype", default="float64",
+                        help="Data type for MACE calculator (float32 or float64)")
     args = parser.parse_args()
 
     # Handle API key management mode
@@ -84,20 +91,26 @@ def main():
                 print("MP_API_KEY not found. You can set it via: usp --mp-api-key <YOUR_KEY>")
             return
 
+    # Relaxation mode: no MP key required
+    if args.relax_xyz:
+        optimizer = MACEOptimizer(device=args.mace_device, dtype=args.mace_dtype)
+        optimizer.relax_file(args.relax_xyz, output_path="opt.xyz")
+        return
+
     # Normal workflow: require either --input or --mp
     if not args.input and not args.mp:
-        parser.error("One of --input or --mp is required")
+        parser.error("One of --input, --mp, or --relax-xyz is required")
 
     mp_api_key = os.environ.get("MP_API_KEY") or _read_mp_api_key_from_bashrc()
     if not mp_api_key:
         parser.error("Materials Project API key must be provided via --mp-api-key or MP_API_KEY env var")
 
     provider = MaterialsProjectClient(api_key=mp_api_key)
-    optimizer = MACEOptimizer()
+    optimizer = MACEOptimizer(device=args.mace_device, dtype=args.mace_dtype)
     dft_calc = DummyDFTCalculator()
 
     if args.mp:
-        ids = provider.download_structures_by_elements(args.mp, out_dir=args.output_dir)
+        ids = provider.download_structures_by_elements(args.mp, out_dir=args.output_dir, fmt=args.format)
         for mid in ids:
             print(f"downloaded {mid}")
         return

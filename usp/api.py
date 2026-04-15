@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from typing import Any
 from pymatgen.core import Structure
 from pymatgen.ext.matproj import MPRester
+from pymatgen.io.ase import AseAtomsAdaptor
+from ase.io import write
 
 try:
     from mp_api.client import MPRester as MPAPIClient
@@ -59,19 +61,33 @@ class MaterialsProjectClient(StructureProvider):
         else:
             raise RuntimeError("The mp-api package is required, please install by pip install mp-api")
 
-    def download_structures_by_elements(self, elements: list[str], out_dir: str = ".") -> list[str]:
-        """
-        Search and write VASP POSCARs for matching materials.
+    def download_structures_by_elements(self, elements: list[str], out_dir: str = ".", fmt: str = "vasp") -> list[str]:
+        """Search and write structures for matching materials.
+
+        Parameters
+        ----------
+        elements
+            List of element symbols to search for.
+        out_dir
+            Output directory.
+        fmt
+            Output format: "vasp" (default) or "xyz".
         """
         from pathlib import Path
-        from pymatgen.io.vasp import Poscar
 
         Path(out_dir).mkdir(parents=True, exist_ok=True)
         entries = self.get_structures_by_elements(elements)
         ids: list[str] = []
         for i, (mid, struct) in enumerate(entries, start=1):
             formula = struct.composition.reduced_formula
-            filename = Path(out_dir) / f"{i}-{formula}-{mid}.vasp"
-            Poscar(struct).write_file(filename)
+            filename = Path(out_dir) / f"{i}-{formula}-{mid}.{fmt}"
+            atoms = AseAtomsAdaptor().get_atoms(struct)
+            print(atoms)
+            if fmt == "vasp":
+                write(str(filename), atoms, format="vasp")
+            elif fmt == "xyz":
+                write(str(filename), atoms, format="extxyz")
+            else:
+                raise ValueError(f"Unsupported format: {fmt}")
             ids.append(mid)
         return ids

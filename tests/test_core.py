@@ -33,10 +33,12 @@ def test_base_classes():
         StructureProvider()
 
 
-def test_dummy_components(tmp_path):
+def test_dummy_components(monkeypatch, tmp_path):
     provider = MaterialsProjectClient(api_key="TESTTESTTESTTESTTESTTESTTESTTEST")
     # monkeypatch get_structure to avoid network
     provider.get_structure = lambda x: Structure([[1,0,0],[0,1,0],[0,0,1]], ["H","H","H"], [[0,0,0],[0,0,0],[0,0,0]])
+    # avoid requiring mace/ase in the test environment
+    monkeypatch.setattr("usp.optimizer.MACEOptimizer._relax_atoms", lambda self, atoms: atoms)
     optimizer = MACEOptimizer()
     dft_calc = DummyDFTCalculator()
     input_file = tmp_path / "in.csv"
@@ -76,27 +78,27 @@ def test_cli_mp_search(monkeypatch, tmp_path):
     class DummyProv:
         def __init__(self, api_key):
             assert api_key == "TESTTESTTESTTESTTESTTESTTESTTEST"
-        def download_structures_by_elements(self, elements, out_dir="."):
-            # ensure elements passed correctly and write a trivial cif
+        def download_structures_by_elements(self, elements, out_dir=".", fmt="vasp"):
+            # ensure elements passed correctly and write a trivial file
             assert elements == ["Li", "In"]
             import os
             from pymatgen.core import Structure
-            from pymatgen.io.cif import CifWriter
+            from pymatgen.io.vasp import Poscar
             os.makedirs(out_dir, exist_ok=True)
             struct = Structure([[1, 0, 0], [0, 1, 0], [0, 0, 1]], ["H"], [[0, 0, 0]])
-            CifWriter(struct).write_file(f"{out_dir}/mp-1.cif")
+            Poscar(struct).write_file(f"{out_dir}/mp-1.vasp")
             return ["mp-1"]
     monkeypatch.setattr("usp.main.MaterialsProjectClient", DummyProv)
-    monkeypatch.setattr("usp.main.MACEOptimizer", lambda: None)
-    monkeypatch.setattr("usp.main.DummyDFTCalculator", lambda: None)
+    monkeypatch.setattr("usp.main.MACEOptimizer", lambda *args, **kwargs: None)
+    monkeypatch.setattr("usp.main.DummyDFTCalculator", lambda *args, **kwargs: None)
     monkeypatch.setattr("usp.main._read_mp_api_key_from_bashrc", lambda: "TESTTESTTESTTESTTESTTESTTESTTEST")
 
     outdir = tmp_path / "out"
     monkeypatch.setattr("sys.argv", ["usp", "--mp", "Li", "In", "--output-dir", str(outdir)])
     from usp.main import main
     main()
-    # verify the CIF file was created
-    assert (outdir / "mp-1.cif").exists()
+    # verify the VASP file was created
+    assert (outdir / "mp-1.vasp").exists()
 
 
 def test_cli_mp_api_key_check_found(monkeypatch, capsys):
