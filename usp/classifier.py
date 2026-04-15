@@ -71,7 +71,15 @@ class SuperionicClassifier:
                 "ASE is required for classification. Please install: pip install ase"
             ) from exc
 
-        from data.element_properties import CHI_0GPA, ETA_0GPA
+        try:
+            from data.element_properties import CHI_0GPA, ETA_0GPA
+        except ModuleNotFoundError:
+            import os
+            import sys
+            _parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if _parent not in sys.path:
+                sys.path.insert(0, _parent)
+            from data.element_properties import CHI_0GPA, ETA_0GPA
 
         symbols = list(set(atoms.get_chemical_symbols()))
         if len(symbols) != 2:

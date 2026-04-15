@@ -15,5 +15,8 @@ dependencies = [
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["usp", "data"]
+
 [project.scripts]
 usp = "usp.main:main"
