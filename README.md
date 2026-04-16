@@ -1,14 +1,14 @@
 # USP (Universal Superionic Prediction)
 
-This Python package provides a framework for constructing workflows targeting ionic materials. The pipeline reads an input file, fetches structures (e.g. from the Materials Project), relaxes them via a generic force field (currently MACE), and finally runs a self-consistent DFT calculation.
+A Python package for high-throughput screening and prediction of superionic materials. It integrates the Materials Project database, the MACE universal force field for structure relaxation, and a pre-fitted SVM classifier for superionicity.
 
 ## Features
 
-- **Input parsing**: flexible readers for CSV/JSON of candidate identifiers.
-- **Structure providers**: default implementation uses Materials Project API via `pymatgen`.
-- **Optimizers**: abstract interface; a stub `MACEOptimizer` is provided.
-- **DFT calculators**: pluggable backends; interface defined for future integrations.
-- **Workflow orchestration**: end-to-end driver script and console entry point.
+- **Structure download**: query the Materials Project by element list and save structures in VASP or ASE-extended XYZ format.
+- **Structure relaxation**: perform geometry optimization (BFGS) with the MACE-MP universal force field.
+- **Superionic classification**: screen binary compounds with a built-in SVM decision plane using electronegativity, chemical hardness, and atomic mass descriptors.
+- **API key management**: read or persist your Materials Project API key in `~/.bashrc` automatically.
+- **Modular design**: pluggable `StructureProvider`, `Optimizer`, and `DFTCalculator` interfaces.
 
 ## Installation
 
@@ -16,30 +16,74 @@ This Python package provides a framework for constructing workflows targeting io
 python -m pip install -e .
 ```
 
+> **Note**: `mace-torch` is required for structure relaxation. Install it with `pip install mace-torch` if you plan to use the `--relax` or full workflow features.
+
+## API Key Management
+
+USP can read the Materials Project API key from the `MP_API_KEY` environment variable or from `~/.bashrc`.
+
+```bash
+# Check if a key is already stored
+usp --mp-api-key
+
+# Store a new key in ~/.bashrc
+usp --mp-api-key <YOUR_KEY>
+```
+
+Once stored, normal workflow commands will pick it up automatically.
+
 ## Usage
 
-Either supply an input file listing Materials Project IDs or formulas, or
-ask USP to pull all entries containing specified elements directly from the
-Materials Project server.  When using ``--mp`` you can also specify an
-output directory for the downloaded CIF files with ``--output-dir``.
+### 1. Download structures from the Materials Project
 
 ```bash
-usp --input candidates.csv                      # normal workflow
-usp --mp Li In --mp-api-key <YOUR_KEY>           # download Li/In entries
-usp --mp Li In --mp-api-key <YOUR_KEY> \
-    --output-dir cif_files                       # save CIFs in subfolder
+# Download Li/In entries as VASP POSCARs (default)
+usp --mp Li In --mp-api-key <YOUR_KEY>
+
+# Download as ASE-extended XYZ files
+usp --mp Li In --mp-api-key <YOUR_KEY> --format xyz
+
+# Save to a custom directory
+usp --mp Li In --mp-api-key <YOUR_KEY> --output-dir structures
 ```
 
-You only need to provide the API key once per invocation; the key may be set
-in your shell environment instead of passed on the command line:
+Files are named `序号-化学式-mpid.vasp` (or `.xyz`), e.g. `1-LiIn-mp-1234.vasp`.
+
+### 2. Relax a structure with MACE
 
 ```bash
-export MP_API_KEY=<YOUR_KEY>
-usp --mp Li In            # will pick up key automatically
+# CPU with default float64 (recommended for geometry optimization)
+usp --relax structure.xyz
+
+# GPU with float32
+usp --relax structure.xyz --mace-device cuda --mace-dtype float32
 ```
+
+The relaxed structure is written to `opt.xyz`.
+
+### 3. Screen structures for superionicity
+
+```bash
+usp --predict candidates.xyz
+```
+
+Each frame in the input XYZ is classified by a hard-coded SVM boundary. Two files are produced in the current directory:
+
+- `superionic.xyz`
+- `non_superionic.xyz`
+
+If `atoms.info` is empty, the classifier automatically populates it with elemental electronegativity (`chi`), chemical hardness (`eta`), and atomic masses from the internal database, where **A is always the element with the smaller atomic number**.
+
+### 4. Full screening workflow
+
+```bash
+usp --input candidates.csv
+```
+
+This runs the end-to-end pipeline: read identifiers → fetch structures → MACE relaxation → DFT stub.
 
 ## Extensibility
 
-Subclass `StructureProvider`, `Optimizer`, or `DFTCalculator` to swap components.
+Subclass `StructureProvider`, `Optimizer`, or `DFTCalculator` to swap backends.
 
-See the docstrings in the source modules for details.
+See the docstrings in `usp/` for details.
