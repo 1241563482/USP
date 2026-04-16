@@ -13,9 +13,8 @@ class DFTCalculator(ABC):
 
     @abstractmethod
     def run(self, structure: Structure) -> dict:
-        """Perform a DFT calculation on the given structure.
-
-        Returns a dict containing results (energy, forces, etc.).
+        """
+        Perform a DFT calculation on the given structure.
         """
         pass
 
